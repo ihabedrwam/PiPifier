@@ -1,4 +1,4 @@
-name: Build macOS App and Zip
+name: Build Unsigned macOS App as ZIP
 
 on:
   workflow_dispatch: # manuell startbar
@@ -11,21 +11,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build macOS App
+      - name: Build macOS App Unsigned
         run: |
+          # Build workspace ohne Signierung
           xcodebuild -workspace PiPifier.xcworkspace \
                      -scheme PiPifier \
                      -configuration Release \
-                     -derivedDataPath build
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO
 
-      - name: Zip the .app
+      - name: Package App into ZIP
         run: |
-          mkdir -p build/release
-          zip -r build/release/PiPifier.zip build/Build/Products/Release/PiPifier.app
+          cd build/Build/Products/Release
+          zip -r PiPifier-macOS.zip PiPifier.app
 
-      - name: Upload ZIP as Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload ZIP as Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: build/release/PiPifier.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: PiPifier-macOS-ZIP
+          path: build/Build/Products/Release/PiPifier-macOS.zip
