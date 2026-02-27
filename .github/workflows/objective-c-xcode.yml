@@ -1,26 +1,54 @@
-name: Xcode - Build and Analyze
+name: Build Unsigned IPA
 
 on:
-  push:
-    branches: [ "**" ]
-  pull_request:
-    branches: [ "**" ]
+  workflow_dispatch: # manuell startbar
 
 jobs:
   build:
-    name: Build and analyse default scheme using xcodebuild command
     runs-on: macos-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Build
-        env:
-          scheme: ${{ 'default' }}
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Create ExportOptions.plist for Unsigned IPA
         run: |
-          if [ $scheme = default ]; then scheme=PiPifier; fi
-          if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
-          file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
-          cat "macOS/PiPifier macOS.xcodeproj/project.pbxproj" | sed 's/Mac Developer/-/g' > /tmp/t
-          mv /tmp/t "macOS/PiPifier macOS.xcodeproj/project.pbxproj"
-          xcodebuild clean build analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -configuration Debug | xcpretty && exit ${PIPESTATUS[0]}
+          cat <<EOF > ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>compileBitcode</key>
+            <false/>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>destination</key>
+            <string>export</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build Unsigned IPA
+        run: |
+          # Falls du nur ein Projekt hast, benutze .xcodeproj
+          # Falls Workspace, passe .xcworkspace an
+          xcodebuild -project *.xcodeproj \
+                     -scheme $(ls *.xcodeproj | sed 's/\.xcodeproj//') \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -archivePath $PWD/build/App.xcarchive archive
+
+          xcodebuild -exportArchive \
+                     -archivePath $PWD/build/App.xcarchive \
+                     -exportPath $PWD/build/ \
+                     -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload IPA as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: UnsignedApp
+          path: build/*.ipa
