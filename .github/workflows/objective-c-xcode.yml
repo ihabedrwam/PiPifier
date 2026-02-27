@@ -21,7 +21,7 @@ jobs:
             <key>compileBitcode</key>
             <false/>
             <key>method</key>
-            <string>ad-hoc</string>
+            <string>development</string>
             <key>signingStyle</key>
             <string>manual</string>
             <key>stripSwiftSymbols</key>
@@ -34,21 +34,21 @@ jobs:
 
       - name: Build Unsigned IPA
         run: |
-          # Falls du nur ein Projekt hast, benutze .xcodeproj
-          # Falls Workspace, passe .xcworkspace an
-          xcodebuild -project *.xcodeproj \
-                     -scheme $(ls *.xcodeproj | sed 's/\.xcodeproj//') \
+          mkdir -p build
+          # Build Workspace statt Projekt
+          xcodebuild -workspace "PiPifier.xcworkspace" \
+                     -scheme "PiPifier" \
                      -sdk iphoneos \
                      -configuration Release \
-                     -archivePath $PWD/build/App.xcarchive archive
+                     -archivePath $PWD/build/PiPifier.xcarchive archive
 
           xcodebuild -exportArchive \
-                     -archivePath $PWD/build/App.xcarchive \
+                     -archivePath $PWD/build/PiPifier.xcarchive \
                      -exportPath $PWD/build/ \
                      -exportOptionsPlist ExportOptions.plist
 
       - name: Upload IPA as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UnsignedApp
+          name: UnsignedPiPifier
           path: build/*.ipa
