@@ -1,4 +1,4 @@
-name: Build Unsigned IPA
+name: Build macOS App and Zip
 
 on:
   workflow_dispatch: # manuell startbar
@@ -11,44 +11,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Create ExportOptions.plist for Unsigned IPA
+      - name: Build macOS App
         run: |
-          cat <<EOF > ExportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>method</key>
-            <string>development</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>destination</key>
-            <string>export</string>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Build Unsigned IPA
-        run: |
-          mkdir -p build
-          # Build Workspace statt Projekt
-          xcodebuild -workspace "PiPifier.xcworkspace" \
-                     -scheme "PiPifier" \
-                     -sdk iphoneos \
+          xcodebuild -workspace PiPifier.xcworkspace \
+                     -scheme PiPifier \
                      -configuration Release \
-                     -archivePath $PWD/build/PiPifier.xcarchive archive
+                     -derivedDataPath build
 
-          xcodebuild -exportArchive \
-                     -archivePath $PWD/build/PiPifier.xcarchive \
-                     -exportPath $PWD/build/ \
-                     -exportOptionsPlist ExportOptions.plist
+      - name: Zip the .app
+        run: |
+          mkdir -p build/release
+          zip -r build/release/PiPifier.zip build/Build/Products/Release/PiPifier.app
 
-      - name: Upload IPA as Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload ZIP as Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: UnsignedPiPifier
-          path: build/*.ipa
+          files: build/release/PiPifier.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
