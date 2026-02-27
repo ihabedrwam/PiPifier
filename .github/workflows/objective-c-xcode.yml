@@ -1,33 +1,49 @@
-name: Build Unsigned macOS App as ZIP
+name: Build Unsigned iOS IPA
 
 on:
   workflow_dispatch: # manuell startbar
 
 jobs:
-  build:
+  build-ios:
     runs-on: macos-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build macOS App Unsigned
+      - name: Build iOS App Unsigned
         run: |
-          # Build workspace ohne Signierung
-          xcodebuild -workspace PiPifier.xcworkspace \
-                     -scheme PiPifier \
-                     -configuration Release \
-                     -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO
+          cd ios  # gehe in den iOS-Ordner
+          # Prüfen, ob Workspace existiert
+          if [ -f *.xcworkspace ]; then
+            WORKSPACE=$(ls *.xcworkspace)
+            xcodebuild -workspace "$WORKSPACE" \
+                       -scheme PiPifier \
+                       -configuration Release \
+                       -derivedDataPath build \
+                       CODE_SIGN_IDENTITY="" \
+                       CODE_SIGNING_REQUIRED=NO
+          else
+            PROJECT=$(ls *.xcodeproj)
+            xcodebuild -project "$PROJECT" \
+                       -scheme PiPifier \
+                       -configuration Release \
+                       -derivedDataPath build \
+                       CODE_SIGN_IDENTITY="" \
+                       CODE_SIGNING_REQUIRED=NO
+          fi
 
-      - name: Package App into ZIP
+      - name: Package IPA
         run: |
-          cd build/Build/Products/Release
-          zip -r PiPifier-macOS.zip PiPifier.app
+          cd build/Build/Products/Release-iphoneos
+          # .app in IPA umwandeln
+          mkdir -p Payload
+          cp -r PiPifier.app Payload/
+          zip -r PiPifier-iOS.ipa Payload
+          rm -rf Payload
 
-      - name: Upload ZIP as Artifact
+      - name: Upload IPA as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PiPifier-macOS-ZIP
-          path: build/Build/Products/Release/PiPifier-macOS.zip
+          name: PiPifier-iOS-IPA
+          path: ios/build/Build/Products/Release-iphoneos/PiPifier-iOS.ipa
