@@ -1,7 +1,7 @@
 name: Build Unsigned iOS IPA
 
 on:
-  workflow_dispatch: # manuell startbar
+  workflow_dispatch:
 
 jobs:
   build:
@@ -37,19 +37,19 @@ jobs:
           cd "PiPifier iOS"
           mkdir -p build
           # Archive bauen
-          xcodebuild -workspace PiPifier.xcworkspace \
+          xcodebuild -workspace "PiPifier.xcworkspace" \
                      -scheme PiPifier \
                      -sdk iphoneos \
                      -configuration Release \
-                     -archivePath $PWD/build/PiPifier.xcarchive archive
+                     -archivePath "$PWD/build/PiPifier.xcarchive" archive
           # IPA exportieren
           xcodebuild -exportArchive \
-                     -archivePath $PWD/build/PiPifier.xcarchive \
-                     -exportPath $PWD/build/ \
+                     -archivePath "$PWD/build/PiPifier.xcarchive" \
+                     -exportPath "$PWD/build/" \
                      -exportOptionsPlist ../ExportOptions.plist
 
       - name: Upload IPA as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: UnsignedPiPifierIPA
-          path: PiPifier iOS/build/*.ipa
+          path: "PiPifier iOS/build/*.ipa"
