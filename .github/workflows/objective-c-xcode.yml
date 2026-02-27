@@ -1,4 +1,4 @@
-name: Build Unsigned iOS IPA
+name: Build iOS IPA
 
 on:
   workflow_dispatch:
@@ -8,48 +8,35 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create ExportOptions.plist for Unsigned IPA
-        run: |
-          cat <<EOF > ExportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>destination</key>
-            <string>export</string>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Build Unsigned iOS IPA
+      - name: Build iOS App (No Signing)
         run: |
           cd "PiPifier iOS"
-          mkdir -p build
-          # Archive bauen
-          xcodebuild -workspace "PiPifier.xcworkspace" \
-                     -scheme PiPifier \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     -archivePath "$PWD/build/PiPifier.xcarchive" archive
-          # IPA exportieren
-          xcodebuild -exportArchive \
-                     -archivePath "$PWD/build/PiPifier.xcarchive" \
-                     -exportPath "$PWD/build/" \
-                     -exportOptionsPlist ../ExportOptions.plist
 
-      - name: Upload IPA as Artifact
+          # Projekt automatisch erkennen
+          PROJECT=$(ls *.xcodeproj)
+          SCHEME=$(basename "$PROJECT" .xcodeproj)
+
+          # Build ohne Code Signing
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+          # IPA erzeugen
+          mkdir -p Payload
+          cp -r build/App.xcarchive/Products/Applications/*.app Payload/
+          zip -r App.ipa Payload
+
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: UnsignedPiPifierIPA
-          path: "PiPifier iOS/build/*.ipa"
+          name: PiPifier-iOS
+          path: "PiPifier iOS/App.ipa"
